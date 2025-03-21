@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Variables
+TARGET_DIR="/usr/local/bin/ubuntu_backup_restore"
+PACKAGE_DIR="backup-restore-tool"
+CONTROL_FILE="$PACKAGE_DIR/DEBIAN/control"
+
+# Vérifier si le répertoire cible existe
+if [ ! -d "$TARGET_DIR" ]; then
+  echo "Erreur : Le répertoire $TARGET_DIR n'existe pas."
+  exit 1
+fi
+
+# Changer de répertoire
+cd "$TARGET_DIR" || { echo "Erreur : Impossible de changer de répertoire vers $TARGET_DIR."; exit 1; }
+
+# Vérifier si le répertoire du paquet existe
+if [ ! -d "$PACKAGE_DIR" ]; then
+  echo "Erreur : Le répertoire $PACKAGE_DIR n'existe pas dans $TARGET_DIR."
+  exit 1
+fi
+
+# Vérifier si le fichier de contrôle existe
+if [ ! -f "$CONTROL_FILE" ]; then
+  echo "Erreur : Le fichier $CONTROL_FILE est manquant."
+  exit 1
+fi
+
+# Construire le paquet Debian
+echo "Construction du paquet Debian à partir de $PACKAGE_DIR..."
+if dpkg-deb --build "$PACKAGE_DIR"; then
+  echo "Paquet Debian construit avec succès."
+else
+  echo "Erreur : Échec de la construction du paquet Debian."
+  exit 1
+fi
