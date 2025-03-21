@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG_FILE="./nas_config.conf"
+CONFIG_FILE="/etc/backup-restore-tool/nas_config.conf"
 
 # -------------------------
 # Create config file if missing
