@@ -37,10 +37,16 @@ source "$CONFIG_FILE"
 echo "=============================="
 echo " UBUNTU BACKUP & RESTORE TOOL"
 echo "=============================="
-echo "Current NAS Config:"
-echo "  NAS User : $nas_user"
-echo "  NAS IP   : $nas_ip"
-echo "  NAS Path : $nas_path"
+# if $local_path is different than "", it means we're using local backups
+if [ "$local_path" != "" ]; then
+  echo "Current Local Config:"
+  echo "  Local Path: $local_path"
+else
+  echo "Current NAS Config:"
+  echo "  NAS User : $nas_user"
+  echo "  NAS IP   : $nas_ip"
+  echo "  NAS Path : $nas_path"
+fi
 echo
 echo "What do you want to do?"
 echo "1) Backup (Save current system)"
