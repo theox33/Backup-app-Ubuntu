@@ -5,5 +5,5 @@ Priority: optional
 Architecture: all
 Depends: rsync
 Maintainer: Théo Avril <theo@example.com>
-Description: Outil de sauvegarde et restauration Ubuntu via rsync vers un NAS.
- Script interactif pour effectuer des sauvegardes/restaurations système depuis ou vers un NAS.
+Description: Ubuntu backup and restore tool using rsync to a NAS.
+ Interactive script to perform system backups/restorations from or to a NAS.

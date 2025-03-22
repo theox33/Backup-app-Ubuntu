@@ -8,13 +8,20 @@ CONFIG_FILE="/etc/backup-restore-tool/nas_config.conf"
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "🔧 NAS config not found. Let's set it up."
 
-  read -p "Enter NAS username: " nas_user
-  read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
-  read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu_full): " nas_path
+  read -p "Do you want to send backups to 1. a NAS or 2. a local folder/disk? [1/2]: " backup_destination
+  if [ "$backup_destination" == "1" ]; then
+    read -p "Enter NAS username: " nas_user
+    read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
+    read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu_full): " nas_path
 
-  echo "nas_user=\"$nas_user\"" > "$CONFIG_FILE"
-  echo "nas_ip=\"$nas_ip\"" >> "$CONFIG_FILE"
-  echo "nas_path=\"$nas_path\"" >> "$CONFIG_FILE"
+    echo "nas_user=\"$nas_user\"" > "$CONFIG_FILE"
+    echo "nas_ip=\"$nas_ip\"" >> "$CONFIG_FILE"
+    echo "nas_path=\"$nas_path\"" >> "$CONFIG_FILE"
+  else
+    read -p "Enter local path (e.g. /mnt/backup): " local_path
+
+    echo "local_path=\"$local_path\"" > "$CONFIG_FILE"
+  fi  
 
   echo "✅ Config saved to $CONFIG_FILE"
 fi
