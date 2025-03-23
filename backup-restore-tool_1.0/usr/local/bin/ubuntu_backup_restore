@@ -1,0 +1,104 @@
+#!/bin/bash
+
+CONFIG_FILE="/etc/backup-restore-tool/nas_config.conf"
+
+# -------------------------
+# Create config file if missing
+# -------------------------
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "🔧 NAS config not found. Let's set it up."
+
+  read -p "Do you want to send backups to 1. a NAS or 2. a local folder/disk? [1/2]: " backup_destination
+  if [ "$backup_destination" == "1" ]; then
+    read -p "Enter NAS username: " nas_user
+    read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
+    read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu_full): " nas_path
+
+    echo "nas_user=\"$nas_user\"" > "$CONFIG_FILE"
+    echo "nas_ip=\"$nas_ip\"" >> "$CONFIG_FILE"
+    echo "nas_path=\"$nas_path\"" >> "$CONFIG_FILE"
+  else
+    read -p "Enter local path (e.g. /mnt/backup): " local_path
+
+    echo "local_path=\"$local_path\"" > "$CONFIG_FILE"
+  fi  
+
+  echo "✅ Config saved to $CONFIG_FILE"
+fi
+
+# -------------------------
+# Load config variables
+# -------------------------
+source "$CONFIG_FILE"
+
+# -------------------------
+# Menu
+# -------------------------
+echo "=============================="
+echo " UBUNTU BACKUP & RESTORE TOOL"
+echo "=============================="
+# if $local_path is different than "", it means we're using local backups
+if [ "$local_path" != "" ]; then
+  echo "Current Local Config:"
+  echo "  Local Path: $local_path"
+else
+  echo "Current NAS Config:"
+  echo "  NAS User : $nas_user"
+  echo "  NAS IP   : $nas_ip"
+  echo "  NAS Path : $nas_path"
+fi
+echo
+echo "What do you want to do?"
+echo "1) Backup (Save current system)"
+echo "2) Restore (Recover system to /mnt)"
+read -p "Enter choice [1 or 2]: " choice
+
+if [ "$choice" == "1" ]; then
+  echo "→ Starting full system backup to NAS..."
+  sudo rsync -aAXv / \
+    --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} \
+    "$nas_user@$nas_ip:$nas_path" \
+    --progress --stats
+
+  echo "✅ Backup completed!"
+
+elif [ "$choice" == "2" ]; then
+  echo "→ Restoring system from NAS to /mnt..."
+  echo "⚠️  Make sure you've already mounted the destination partition at /mnt"
+  read -p "Continue? [y/N]: " confirm
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    sudo rsync -aAXv "$nas_user@$nas_ip:$nas_path/" /mnt \
+      --progress --stats
+
+    echo "✅ Restore completed!"
+    echo "➡️  You should now chroot into /mnt and reinstall GRUB:"
+    echo "   sudo mount --bind /dev /mnt/dev"
+    echo "   sudo mount --bind /proc /mnt/proc"
+    echo "   sudo mount --bind /sys /mnt/sys"
+    echo "   sudo chroot /mnt"
+    echo "   grub-install /dev/sdX"
+    echo "   update-grub"
+    echo "   exit && sudo umount -R /mnt && reboot"
+    echo
+    read "Do you want me to execute these commands for you? [y/N]: " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+      sudo mount --bind /dev /mnt/dev
+      sudo mount --bind /proc /mnt/proc
+      sudo mount --bind /sys /mnt/sys
+      sudo chroot /mnt
+      grub-install /dev/sdX
+      update-grub
+      exit && sudo umount -R /mnt && reboot
+    else
+      echo "Ok! Don't forget to run these commands later."
+      echo "Note: You can find your backup files in /mnt/backupdata_ubuntu"
+      echo
+      echo "✅ Done!"
+    fi
+  else
+    echo "❌ Restore cancelled."
+  fi
+
+else
+  echo "❌ Invalid choice."
+fi

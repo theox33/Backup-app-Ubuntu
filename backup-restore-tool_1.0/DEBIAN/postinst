@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo "🔗 Creating the alias 'backup-tool'..."
+ln -sf /usr/local/bin/ubuntu_backup_restore /usr/local/bin/backup-tool
+
+chmod +x /usr/local/bin/backup-tool
+
+echo "✅ The tool is now accessible via the command: backup-tool"

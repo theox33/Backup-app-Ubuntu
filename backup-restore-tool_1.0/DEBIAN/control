@@ -1,0 +1,9 @@
+Package: backup-restore-tool
+Version: 1.0
+Section: admin
+Priority: optional
+Architecture: all
+Depends: rsync
+Maintainer: Théo Avril <theo@example.com>
+Description: Ubuntu backup and restore tool using rsync to a NAS.
+ Interactive script to perform system backups/restorations from or to a NAS.
