@@ -79,6 +79,22 @@ elif [ "$choice" == "2" ]; then
     echo "   grub-install /dev/sdX"
     echo "   update-grub"
     echo "   exit && sudo umount -R /mnt && reboot"
+    echo
+    read "Do you want me to execute these commands for you? [y/N]: " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+      sudo mount --bind /dev /mnt/dev
+      sudo mount --bind /proc /mnt/proc
+      sudo mount --bind /sys /mnt/sys
+      sudo chroot /mnt
+      grub-install /dev/sdX
+      update-grub
+      exit && sudo umount -R /mnt && reboot
+    else
+      echo "Ok! Don't forget to run these commands later."
+      echo "Note: You can find your backup files in /mnt/backupdata_ubuntu"
+      echo
+      echo "✅ Done!"
+    fi
   else
     echo "❌ Restore cancelled."
   fi
