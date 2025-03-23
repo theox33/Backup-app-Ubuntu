@@ -95,13 +95,11 @@ if [ "$choice" == "1" ]; then
         elapsed_str="--:--"
         remaining_str="--:--"
       fi
-      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%%  ($current/$total_files)  ⏱️ Écoulé : $elapsed_str | ⏳ Reste : $remaining_str"
+      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%%  ($current/$total_files)  ⏱️ Elapsed: $elapsed_str | ⏳ Remaining: $remaining_str"
     done
 
   echo -e "\n✅ Backup completed successfully!"
-fi
-
-
+fi  # <-- Add this to close the "if" block
 
 elif [ "$choice" == "2" ]; then
   echo "→ Restoring system from NAS to /mnt..."
@@ -120,26 +118,9 @@ elif [ "$choice" == "2" ]; then
     echo "   grub-install /dev/sdX"
     echo "   update-grub"
     echo "   exit && sudo umount -R /mnt && reboot"
-    echo
-    read "Do you want me to execute these commands for you? [y/N]: " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-      sudo mount --bind /dev /mnt/dev
-      sudo mount --bind /proc /mnt/proc
-      sudo mount --bind /sys /mnt/sys
-      sudo chroot /mnt
-      grub-install /dev/sdX
-      update-grub
-      exit && sudo umount -R /mnt && reboot
-    else
-      echo "Ok! Don't forget to run these commands later."
-      echo "Note: You can find your backup files in /mnt/backupdata_ubuntu"
-      echo
-      echo "✅ Done!"
-    fi
   else
     echo "❌ Restore cancelled."
   fi
-
 else
   echo "❌ Invalid choice."
 fi
