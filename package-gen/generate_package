@@ -1,36 +1,35 @@
 #!/bin/bash
 
-# Variables
-TARGET_DIR="/usr/local/bin/ubuntu_backup_restore"
-PACKAGE_DIR="backup-restore-tool"
-CONTROL_FILE="$PACKAGE_DIR/DEBIAN/control"
+# Package information
+PACKAGE_NAME="backup-restore-tool"
+VERSION="1.0"
+BUILD_DIR="../${PACKAGE_NAME}_${VERSION}"
 
-# Check if the target directory exists
-if [ ! -d "$TARGET_DIR" ]; then
-  echo "Error: The directory $TARGET_DIR does not exist."
-  exit 1
-fi
+# Cleaning up the old build
+echo "🧹 Cleaning up the old directory $BUILD_DIR..."
+rm -rf "$BUILD_DIR"
 
-# Change to the target directory
-cd "$TARGET_DIR" || { echo "Error: Unable to change directory to $TARGET_DIR."; exit 1; }
+# Creating a clean copy of the existing structure
+echo "📦 Creating the package directory structure..."
+mkdir -p "$BUILD_DIR"
 
-# Check if the package directory exists
-if [ ! -d "$PACKAGE_DIR" ]; then
-  echo "Error: The directory $PACKAGE_DIR does not exist in $TARGET_DIR."
-  exit 1
-fi
+# Recursively copying everything except unnecessary files (README, script, etc.)
+cp -r ../DEBIAN "$BUILD_DIR/"
+cp -r ../usr "$BUILD_DIR/"
+cp -r ../etc "$BUILD_DIR/"
 
-# Check if the control file exists
-if [ ! -f "$CONTROL_FILE" ]; then
-  echo "Error: The file $CONTROL_FILE is missing."
-  exit 1
-fi
+# Setting necessary permissions
+echo "🔧 Setting permissions..."
+chmod 755 "$BUILD_DIR/DEBIAN"
+chmod 755 "$BUILD_DIR/usr/local/bin/ubuntu_backup_restore"
+chmod 644 "$BUILD_DIR/etc/backup-restore-tool/nas_config.conf"
+chmod 644 "$BUILD_DIR/etc/backup-restore-tool/nas_config_example.conf"
 
-# Build the Debian package
-echo "Building the Debian package from $PACKAGE_DIR..."
-if dpkg-deb --build "$PACKAGE_DIR"; then
-  echo "Debian package successfully built."
-else
-  echo "Error: Failed to build the Debian package."
-  exit 1
-fi
+# Building the package
+echo "🛠️  Building the .deb package..."
+dpkg-deb --build "$BUILD_DIR"
+
+# Renaming the final package
+mv "${BUILD_DIR}.deb" "../${PACKAGE_NAME}_${VERSION}_all.deb"
+
+echo "✅ Package successfully generated: ../${PACKAGE_NAME}_${VERSION}_all.deb"
