@@ -54,7 +54,7 @@ echo "2) Restore (Recover system to /mnt)"
 read -p "Enter choice [1 or 2]: " choice
 
 if [ "$choice" == "1" ]; then
-  echo "📂 Analyse des fichiers à sauvegarder..."
+  echo "📂 Analyzing files to back up..."
 
   EXCLUDES=(
     --exclude="/dev/*"
@@ -78,14 +78,14 @@ if [ "$choice" == "1" ]; then
   total_size=${total_size:-0}
   human_total=$(numfmt --to=iec-i --suffix=B "$total_size")
 
-  echo "📦 Fichiers à traiter   : $total_files"
-  echo "📏 Taille totale estimée : $human_total"
+  echo "📦 Files to process      : $total_files"
+  echo "📏 Estimated total size  : $human_total"
 
-  read -p "Afficher le nom de chaque fichier ? [y/n] " adv_choice
+  read -p "Display the name of each file? [y/n] " adv_choice
   advanced=false
   [[ "$adv_choice" =~ ^[Yy]$ ]] && advanced=true
 
-  echo "🔄 Sauvegarde en cours..."
+  echo "🔄 Backup in progress..."
 
   current=0
   bar_width=50
@@ -120,7 +120,7 @@ if [ "$choice" == "1" ]; then
     fi
   done
 
-  echo -e "\n✅ Sauvegarde terminée avec succès !"
+  echo -e "\n✅ Backup completed successfully!"
 fi
 
 elif [ "$choice" == "2" ]; then
