@@ -56,82 +56,72 @@ read -p "Enter choice [1 or 2]: " choice
 if [ "$choice" == "1" ]; then
   echo "📂 Analyse des fichiers à sauvegarder..."
 
-  # Dry-run pour estimer le nombre de fichiers et la taille réelle transférée par rsync
-  rsync_output=$(sudo rsync -aAXn \
-    --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} \
-    --out-format="%n" / "$nas_user@$nas_ip:$nas_path" --stats)
+  EXCLUDES=(
+    --exclude="/dev/*"
+    --exclude="/proc/*"
+    --exclude="/sys/*"
+    --exclude="/tmp/*"
+    --exclude="/run/*"
+    --exclude="/mnt/*"
+    --exclude="/media/*"
+    --exclude="/lost+found"
+    --exclude=".gradle/"
+    --exclude="node_modules/"
+  )
 
-  # Extraction des valeurs
-  total_files=$(echo "$rsync_output" | grep "Number of regular files transferred" | awk '{print $6}')
-  total_size=$(echo "$rsync_output" | grep "Total file size" | awk '{print $5}')
+  rsync_output=$(sudo rsync -aAXn "${EXCLUDES[@]}" --out-format="%n" / "$nas_user@$nas_ip:$nas_path" --stats)
 
-  # Sécurisation si rien trouvé
+  file_list=$(echo "$rsync_output" | grep -vE "Number|Total")
+  total_files=$(echo "$file_list" | wc -l)
+  total_size=$(echo "$rsync_output" | grep "Total file size" | grep -oE '[0-9]+' | head -n1)
   total_files=${total_files:-0}
   total_size=${total_size:-0}
-
-  # Conversion en format lisible
   human_total=$(numfmt --to=iec-i --suffix=B "$total_size")
 
-  echo "📦 Nombre estimé de fichiers : $total_files"
-  echo "📏 Taille totale estimée      : $human_total"
+  echo "📦 Fichiers à traiter   : $total_files"
+  echo "📏 Taille totale estimée : $human_total"
 
-  # Choix du mode
-  read -p "Afficher les infos avancées (fichiers traités) ? [y/n] " adv_choice
+  read -p "Afficher le nom de chaque fichier ? [y/n] " adv_choice
   advanced=false
   [[ "$adv_choice" =~ ^[Yy]$ ]] && advanced=true
 
-  echo "→ Démarrage de la sauvegarde vers le NAS..."
-  start_time=$(date +%s)
+  echo "🔄 Sauvegarde en cours..."
+
   current=0
-  uploaded_size=0
   bar_width=50
+  start_time=$(date +%s)
 
-  # Lancement de la vraie sauvegarde
-  sudo rsync -aAX \
-    --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} \
-    --out-format="%n" / "$nas_user@$nas_ip:$nas_path" | while IFS= read -r file; do
-      current=$((current + 1))
+  sudo rsync -aAX "${EXCLUDES[@]}" --out-format="%n" / "$nas_user@$nas_ip:$nas_path" | while IFS= read -r file; do
+    current=$((current + 1))
 
-      # Taille du fichier traité (si existant localement)
-      if [ -f "$file" ]; then
-        size=$(stat -c%s "$file" 2>/dev/null || echo 0)
-        uploaded_size=$((uploaded_size + size))
-      fi
+    percent=$((current * 100 / total_files))
+    filled=$((percent * bar_width / 100))
+    empty=$((bar_width - filled))
+    bar=$(printf "%0.s█" $(seq 1 $filled))
+    spaces=$(printf "%0.s " $(seq 1 $empty))
 
-      # Calculs de progression
-      percent=$((current * 100 / total_files))
-      filled=$((percent * bar_width / 100))
-      empty=$((bar_width - filled))
-      bar=$(printf "%0.s█" $(seq 1 $filled))
-      spaces=$(printf "%0.s " $(seq 1 $empty))
+    now=$(date +%s)
+    elapsed=$((now - start_time))
+    if [ "$current" -gt 0 ]; then
+      estimated_total=$((elapsed * total_files / current))
+      remaining=$((estimated_total - elapsed))
+      printf -v elapsed_str "%02d:%02d" $((elapsed/60)) $((elapsed%60))
+      printf -v remaining_str "%02d:%02d" $((remaining/60)) $((remaining%60))
+    else
+      elapsed_str="--:--"
+      remaining_str="--:--"
+    fi
 
-      # Estimation du temps
-      now=$(date +%s)
-      elapsed=$((now - start_time))
-      if [ "$current" -gt 0 ]; then
-        estimated_total_time=$((elapsed * total_files / current))
-        remaining=$((estimated_total_time - elapsed))
-        printf -v elapsed_str "%02d:%02d" $((elapsed/60)) $((elapsed%60))
-        printf -v remaining_str "%02d:%02d" $((remaining/60)) $((remaining%60))
-      else
-        elapsed_str="--:--"
-        remaining_str="--:--"
-      fi
-
-      # Taille transférée
-      human_uploaded=$(numfmt --to=iec-i --suffix=B "$uploaded_size")
-
-      if [ "$advanced" = true ]; then
-        echo "📄 $file"
-        echo "🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏫ $human_uploaded / $human_total ⏱️ $elapsed_str | ⏳ $remaining_str"
-      else
-        echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏫ $human_uploaded / $human_total ⏱️ $elapsed_str | ⏳ $remaining_str"
-      fi
+    if [ "$advanced" = true ]; then
+      echo "📄 $file"
+      echo "🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+    else
+      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+    fi
   done
 
   echo -e "\n✅ Sauvegarde terminée avec succès !"
 fi
-
 
 elif [ "$choice" == "2" ]; then
   echo "→ Restoring system from NAS to /mnt..."
