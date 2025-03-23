@@ -12,15 +12,17 @@ if [ ! -f "$CONFIG_FILE" ]; then
   if [ "$backup_destination" == "1" ]; then
     read -p "Enter NAS username: " nas_user
     read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
-    read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu_full): " nas_path
+    read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu): " nas_path
 
-    echo "nas_user=\"$nas_user\"" > "$CONFIG_FILE"
+    echo "nas_type=nas" > "$CONFIG_FILE"
+    echo "nas_user=\"$nas_user\"" >> "$CONFIG_FILE"
     echo "nas_ip=\"$nas_ip\"" >> "$CONFIG_FILE"
     echo "nas_path=\"$nas_path\"" >> "$CONFIG_FILE"
   else
     read -p "Enter local path (e.g. /mnt/backup): " local_path
 
-    echo "local_path=\"$local_path\"" > "$CONFIG_FILE"
+    echo "nas_type=local" > "$CONFIG_FILE"
+    echo "local_path=\"$local_path\"" >> "$CONFIG_FILE"
   fi  
 
   echo "✅ Config saved to $CONFIG_FILE"
@@ -37,8 +39,7 @@ source "$CONFIG_FILE"
 echo "=============================="
 echo " UBUNTU BACKUP & RESTORE TOOL"
 echo "=============================="
-# if $local_path is different than "", it means we're using local backups
-if [ "$local_path" != "" ]; then
+if [ "$nas_type" == "local" ]; then
   echo "Current Local Config:"
   echo "  Local Path: $local_path"
 else
@@ -51,7 +52,8 @@ echo
 echo "What do you want to do?"
 echo "1) Backup (Save current system)"
 echo "2) Restore (Recover system to /mnt)"
-read -p "Enter choice [1 or 2]: " choice
+echo "3) Change config"
+read -p "Enter choice [1, 2 or 3]: " choice
 
 if [ "$choice" == "1" ]; then
   echo "📂 Analyzing files to back up..."
@@ -143,6 +145,42 @@ elif [ "$choice" == "2" ]; then
   else
     echo "❌ Restore cancelled."
   fi
+
+# -------------------------
+# Change config
+# -------------------------
+if [ "$choice" == "3" ]; then
+  echo "🔧 Updating backup configuration..."
+  read -p "Do you want to send backups to 1. a NAS or 2. a local folder/disk? [1/2]: " backup_destination
+
+  if [ "$backup_destination" == "1" ]; then
+    read -p "Enter NAS username: " nas_user
+    read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
+    read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu): " nas_path
+
+    echo "nas_type=nas" | sudo tee "$CONFIG_FILE" > /dev/null
+    echo "nas_user=\"$nas_user\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    echo "nas_ip=\"$nas_ip\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    echo "nas_path=\"$nas_path\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+  else
+    read -p "Enter local path (e.g. /mnt/backup): " local_path
+
+    echo "nas_type=local" | sudo tee "$CONFIG_FILE" > /dev/null
+    echo "local_path=\"$local_path\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+  fi
+
+  echo "✅ Config updated."
+  exit 0
+fi
+
+# -------------------------
+# Set destination based on config
+# -------------------------
+if [ "$nas_type" == "nas" ]; then
+  destination="$nas_user@$nas_ip:$nas_path"\else
+  destination="$local_path"
+fi
+
 else
   echo "❌ Invalid choice."
 fi
