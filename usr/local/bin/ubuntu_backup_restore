@@ -95,8 +95,7 @@ if [ "$choice" == "1" ]; then
         elapsed_str="--:--"
         remaining_str="--:--"
       fi
-
-      echo -ne "🔄 [$bar$spaces] $percent%%  ($current/$total_files)  ⏱️ Elapsed: $elapsed_str | ⏳ Remaining: $remaining_str\r"
+      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%%  ($current/$total_files)  ⏱️ Écoulé : $elapsed_str | ⏳ Reste : $remaining_str"
     done
 
   echo -e "\n✅ Backup completed successfully!"

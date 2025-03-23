@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "🗑️ Deleting remaining configuration files..."
+rm -rf /etc/backup-restore-tool
