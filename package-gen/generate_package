@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Package information
+# Informations sur le paquet
 PACKAGE_NAME="backup-restore-tool"
 VERSION="1.0"
-SOURCE_DIR="../"  # The root directory containing the organized package structure
+SOURCE_DIR="../"  # Le répertoire racine contenant la structure organisée du paquet
 OUTPUT_FILE="../${PACKAGE_NAME}_${VERSION}_all.deb"
 
-# Cleaning up any previous .deb package
-echo "🧹 Cleaning up any previous .deb package..."
+# Nettoyage de tout paquet .deb précédent
+echo "🧹 Nettoyage de tout paquet .deb précédent..."
 rm -f "$OUTPUT_FILE"
 
-# Building the package
-echo "🛠️  Building the .deb package..."
+# Construction du paquet
+echo "🛠️  Construction du paquet .deb..."
 dpkg-deb --build "$SOURCE_DIR" "$OUTPUT_FILE"
 
-# Confirming success
+# Confirmation du succès
 if [ $? -eq 0 ]; then
-  echo "✅ Package successfully generated: $OUTPUT_FILE"
+  echo "✅ Paquet généré avec succès : $OUTPUT_FILE"
 else
-  echo "❌ Failed to generate the package."
+  echo "❌ Échec de la génération du paquet."
   exit 1
 fi

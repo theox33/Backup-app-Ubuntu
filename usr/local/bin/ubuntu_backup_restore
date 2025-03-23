@@ -3,31 +3,31 @@
 CONFIG_FILE="/etc/backup-restore-tool/nas_config.conf"
 
 # -------------------------
-# Create config file if missing
+# Créer le fichier de configuration s'il est manquant
 # -------------------------
 if [ ! -f "$CONFIG_FILE" ]; then
-  echo "🔧 NAS config not found. Let's set it up."
+  echo "🔧 Configuration NAS introuvable. Configurons-le."
 
-  read -p "Do you want to send backups to 1. a NAS or 2. a local folder/disk? [1/2]: " backup_destination
+  read -p "Voulez-vous envoyer les sauvegardes vers 1. un NAS ou 2. un dossier/disque local ? [1/2]: " backup_destination
   if [ "$backup_destination" == "1" ]; then
-    read -p "Enter NAS username: " nas_user
-    read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
-    read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu_full): " nas_path
+    read -p "Entrez le nom d'utilisateur NAS : " nas_user
+    read -p "Entrez l'adresse IP du NAS (ex. 192.168.1.195) : " nas_ip
+    read -p "Entrez le chemin du NAS (ex. /volume1/NetBackup/backupdata_ubuntu_full) : " nas_path
 
     echo "nas_user=\"$nas_user\"" > "$CONFIG_FILE"
     echo "nas_ip=\"$nas_ip\"" >> "$CONFIG_FILE"
     echo "nas_path=\"$nas_path\"" >> "$CONFIG_FILE"
   else
-    read -p "Enter local path (e.g. /mnt/backup): " local_path
+    read -p "Entrez le chemin local (ex. /mnt/backup) : " local_path
 
     echo "local_path=\"$local_path\"" > "$CONFIG_FILE"
   fi  
 
-  echo "✅ Config saved to $CONFIG_FILE"
+  echo "✅ Configuration enregistrée dans $CONFIG_FILE"
 fi
 
 # -------------------------
-# Load config variables
+# Charger les variables de configuration
 # -------------------------
 source "$CONFIG_FILE"
 
@@ -35,26 +35,26 @@ source "$CONFIG_FILE"
 # Menu
 # -------------------------
 echo "=============================="
-echo " UBUNTU BACKUP & RESTORE TOOL"
+echo " OUTIL DE SAUVEGARDE & RESTAURATION UBUNTU"
 echo "=============================="
-# if $local_path is different than "", it means we're using local backups
+# Si $local_path est différent de "", cela signifie que nous utilisons des sauvegardes locales
 if [ "$local_path" != "" ]; then
-  echo "Current Local Config:"
-  echo "  Local Path: $local_path"
+  echo "Configuration locale actuelle :"
+  echo "  Chemin local : $local_path"
 else
-  echo "Current NAS Config:"
-  echo "  NAS User : $nas_user"
-  echo "  NAS IP   : $nas_ip"
-  echo "  NAS Path : $nas_path"
+  echo "Configuration NAS actuelle :"
+  echo "  Utilisateur NAS : $nas_user"
+  echo "  IP NAS : $nas_ip"
+  echo "  Chemin NAS : $nas_path"
 fi
 echo
-echo "What do you want to do?"
-echo "1) Backup (Save current system)"
-echo "2) Restore (Recover system to /mnt)"
-read -p "Enter choice [1 or 2]: " choice
+echo "Que voulez-vous faire ?"
+echo "1) Sauvegarder (Enregistrer le système actuel)"
+echo "2) Restaurer (Récupérer le système vers /mnt)"
+read -p "Entrez votre choix [1 ou 2] : " choice
 
 if [ "$choice" == "1" ]; then
-  echo "📂 Analyzing files to back up..."
+  echo "📂 Analyse des fichiers à sauvegarder..."
 
   EXCLUDES=(
     --exclude="/dev/*"
@@ -78,14 +78,14 @@ if [ "$choice" == "1" ]; then
   total_size=${total_size:-0}
   human_total=$(numfmt --to=iec-i --suffix=B "$total_size")
 
-  echo "📦 Files to process      : $total_files"
-  echo "📏 Estimated total size  : $human_total"
+  echo "📦 Fichiers à traiter      : $total_files"
+  echo "📏 Taille totale estimée   : $human_total"
 
-  read -p "Display the name of each file? [y/n] " adv_choice
+  read -p "Afficher le nom de chaque fichier ? [y/n] " adv_choice
   advanced=false
   [[ "$adv_choice" =~ ^[Yy]$ ]] && advanced=true
 
-  echo "🔄 Backup in progress..."
+  echo "🔄 Sauvegarde en cours..."
 
   current=0
   bar_width=50
@@ -120,19 +120,19 @@ if [ "$choice" == "1" ]; then
     fi
   done
 
-  echo -e "\n✅ Backup completed successfully!"
+  echo -e "\n✅ Sauvegarde terminée avec succès !"
 fi
 
 elif [ "$choice" == "2" ]; then
-  echo "→ Restoring system from NAS to /mnt..."
-  echo "⚠️  Make sure you've already mounted the destination partition at /mnt"
-  read -p "Continue? [y/N]: " confirm
+  echo "→ Restauration du système depuis le NAS vers /mnt..."
+  echo "⚠️  Assurez-vous d'avoir monté la partition de destination sur /mnt"
+  read -p "Continuer ? [y/N] : " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
     sudo rsync -aAXv "$nas_user@$nas_ip:$nas_path/" /mnt \
       --progress --stats
 
-    echo "✅ Restore completed!"
-    echo "➡️  You should now chroot into /mnt and reinstall GRUB:"
+    echo "✅ Restauration terminée !"
+    echo "➡️  Vous devez maintenant chroot dans /mnt et réinstaller GRUB :"
     echo "   sudo mount --bind /dev /mnt/dev"
     echo "   sudo mount --bind /proc /mnt/proc"
     echo "   sudo mount --bind /sys /mnt/sys"
@@ -141,8 +141,8 @@ elif [ "$choice" == "2" ]; then
     echo "   update-grub"
     echo "   exit && sudo umount -R /mnt && reboot"
   else
-    echo "❌ Restore cancelled."
+    echo "❌ Restauration annulée."
   fi
 else
-  echo "❌ Invalid choice."
+  echo "❌ Choix invalide."
 fi
