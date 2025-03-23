@@ -114,9 +114,9 @@ if [ "$choice" == "1" ]; then
 
     if [ "$advanced" = true ]; then
       echo "📄 $file"
-      echo "🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+      echo "🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
     else
-      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
     fi
   done
 
