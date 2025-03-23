@@ -25,6 +25,16 @@ chmod 755 "$BUILD_DIR/usr/local/bin/ubuntu_backup_restore"
 chmod 644 "$BUILD_DIR/etc/backup-restore-tool/nas_config.conf"
 chmod 644 "$BUILD_DIR/etc/backup-restore-tool/nas_config_example.conf"
 
+# Generating launcher icon
+echo "🖼️ Generating the launcher icon..."
+mkdir -p "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps"
+cp ../usr/share/icons/hicolor/256x256/apps/backup-restore.png "$BUILD_DIR/usr/share/icons/hicolor/256x256/apps/"
+
+# Creating application launcher
+echo "🚀 Creating the application launcher..."
+mkdir -p "$BUILD_DIR/usr/share/applications"
+cp ../usr/share/applications/backup-restore.desktop "$BUILD_DIR/usr/share/applications/"
+
 # Building the package
 echo "🛠️  Building the .deb package..."
 dpkg-deb --build "$BUILD_DIR"

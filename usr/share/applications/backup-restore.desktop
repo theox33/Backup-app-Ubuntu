@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Backup & Restore Tool
+Comment=Outil de sauvegarde et restauration via NAS
+Exec=gnome-terminal -- bash -c "sudo backup-tool; exec bash"
+Icon=backup-restore
+Terminal=false
+Categories=Utility;System;
