@@ -1,4 +1,0 @@
-#!/bin/bash
-
-echo "🗑️  Removing the alias 'backup-tool'..."
-rm -f /usr/local/bin/backup-tool

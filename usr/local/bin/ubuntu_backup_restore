@@ -54,22 +54,34 @@ echo "2) Restore (Recover system to /mnt)"
 read -p "Enter choice [1 or 2]: " choice
 
 if [ "$choice" == "1" ]; then
-  echo "📂 Analyzing files to back up..."
+  echo "📂 Analyse des fichiers à sauvegarder..."
 
-  # Calculate the number of files and the total size in bytes
-  start_time=$(date +%s)
+  # Calcul du nombre de fichiers à sauvegarder
   total_files=$(sudo find / \
-    \( -path /dev -o -path /proc -o -path /sys -o -path /tmp -o -path /run -o -path /mnt -o -path /media -o -path /lost+found \) -prune -o -type f -print | wc -l)
+    \( -path /dev -o -path /proc -o -path /sys -o -path /tmp -o -path /run -o -path /mnt -o -path /media -o -path /lost+found \) \
+    -prune -o -type f -print | wc -l)
 
+  # Calcul de la taille totale à transférer (en octets)
   total_size=$(sudo du -sb --exclude={"/dev","/proc","/sys","/tmp","/run","/mnt","/media","/lost+found"} / | awk '{print $1}')
-  human_size=$(numfmt --to=iec-i --suffix=B "$total_size")
+  human_total=$(numfmt --to=iec-i --suffix=B "$total_size")
 
-  echo "📦 Files to back up       : $total_files"
-  echo "📏 Estimated size         : $human_size"
-  echo "→ Starting backup with time estimation..."
+  echo "📦 Nombre total de fichiers : $total_files"
+  echo "📏 Taille totale estimée   : $human_total"
 
-  # Initialization
+  # Demande d'affichage d'infos avancées
+  read -p "Afficher les infos avancées (nom de chaque fichier) ? [y/n] " adv_choice
+  if [[ "$adv_choice" =~ ^[Yy]$ ]]; then
+      advanced=true
+      echo "→ Mode avancé activé : chaque fichier sera affiché."
+  else
+      advanced=false
+      echo "→ Mode avancé désactivé : seule la barre de progression sera affichée."
+  fi
+
+  echo "→ Démarrage de la sauvegarde vers le NAS..."
+  start_time=$(date +%s)
   current=0
+  uploaded_size=0
   bar_width=50
 
   sudo rsync -aAX \
@@ -77,29 +89,51 @@ if [ "$choice" == "1" ]; then
     --out-format="%n" \
     / "$nas_user@$nas_ip:$nas_path" | while IFS= read -r file; do
       current=$((current + 1))
+      
+      # Si le fichier existe toujours, on récupère sa taille pour l'ajouter au total uploadé
+      if [ -f "$file" ]; then
+          size=$(stat -c%s "$file" 2>/dev/null || echo 0)
+          uploaded_size=$((uploaded_size + size))
+      fi
+
+      # Calcul du pourcentage et construction de la barre
       percent=$((current * 100 / total_files))
       filled=$((percent * bar_width / 100))
       empty=$((bar_width - filled))
       bar=$(printf "%0.s█" $(seq 1 $filled))
       spaces=$(printf "%0.s " $(seq 1 $empty))
 
-      # Estimated time
+      # Calcul du temps écoulé et estimation du temps restant
       now=$(date +%s)
       elapsed=$((now - start_time))
       if [ "$current" -gt 0 ]; then
-        estimated_total_time=$((elapsed * total_files / current))
-        remaining=$((estimated_total_time - elapsed))
-        printf -v elapsed_str "%02d:%02d" $((elapsed/60)) $((elapsed%60))
-        printf -v remaining_str "%02d:%02d" $((remaining/60)) $((remaining%60))
+          estimated_total_time=$((elapsed * total_files / current))
+          remaining=$((estimated_total_time - elapsed))
+          printf -v elapsed_str "%02d:%02d" $((elapsed/60)) $((elapsed%60))
+          printf -v remaining_str "%02d:%02d" $((remaining/60)) $((remaining%60))
       else
-        elapsed_str="--:--"
-        remaining_str="--:--"
+          elapsed_str="--:--"
+          remaining_str="--:--"
       fi
-      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%%  ($current/$total_files)  ⏱️ Elapsed: $elapsed_str | ⏳ Remaining: $remaining_str"
-    done
 
-  echo -e "\n✅ Backup completed successfully!"
-fi  # <-- Add this to close the "if" block
+      # Format des tailles uploadée et totale
+      human_uploaded=$(numfmt --to=iec-i --suffix=B "$uploaded_size")
+
+      # Selon le mode avancé, on affiche soit avec le nom de fichier, soit pas
+      if [ "$advanced" = true ]; then
+          # Mode avancé : affichage du nom du fichier traité sur une nouvelle ligne
+          echo "📄 Traitement : $file"
+          echo "🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏫ $human_uploaded / $human_total ⏱️ $elapsed_str | ⏳ $remaining_str"
+      else
+          # Mode standard : on efface la ligne précédente avant d'afficher la barre mise à jour
+          echo -ne "\033[2K\r🔄 [$bar$spaces] $percent%% ($current/$total_files) ⏫ $human_uploaded / $human_total ⏱️ $elapsed_str | ⏳ $remaining_str"
+      fi
+  done
+
+  # Pour s'assurer que la dernière ligne est affichée proprement
+  echo -e "\n✅ Sauvegarde terminée avec succès !"
+fi
+
 
 elif [ "$choice" == "2" ]; then
   echo "→ Restoring system from NAS to /mnt..."
