@@ -55,132 +55,184 @@ echo "2) Restore (Recover system to /mnt)"
 echo "3) Change config"
 read -p "Enter choice [1, 2 or 3]: " choice
 
-if [ "$choice" == "1" ]; then
-  echo "📂 Analyzing files to back up..."
-
-  EXCLUDES=(
-    --exclude="/dev/*"
-    --exclude="/proc/*"
-    --exclude="/sys/*"
-    --exclude="/tmp/*"
-    --exclude="/run/*"
-    --exclude="/mnt/*"
-    --exclude="/media/*"
-    --exclude="/lost+found"
-    --exclude=".gradle/"
-    --exclude="node_modules/"
-  )
-
-  rsync_output=$(sudo rsync -aAXn "${EXCLUDES[@]}" --out-format="%n" / "$nas_user@$nas_ip:$nas_path" --stats)
-
-  file_list=$(echo "$rsync_output" | grep -vE "Number|Total")
-  total_files=$(echo "$file_list" | wc -l)
-  total_size=$(echo "$rsync_output" | grep "Total file size" | grep -oE '[0-9]+' | head -n1)
-  total_files=${total_files:-0}
-  total_size=${total_size:-0}
-  human_total=$(numfmt --to=iec-i --suffix=B "$total_size")
-
-  echo "📦 Files to process      : $total_files"
-  echo "📏 Estimated total size  : $human_total"
-
-  read -p "Display the name of each file? [y/n] " adv_choice
-  advanced=false
-  [[ "$adv_choice" =~ ^[Yy]$ ]] && advanced=true
-
-  echo "🔄 Backup in progress..."
-
-  current=0
-  bar_width=50
-  start_time=$(date +%s)
-
-  sudo rsync -aAX "${EXCLUDES[@]}" --out-format="%n" / "$nas_user@$nas_ip:$nas_path" | while IFS= read -r file; do
-    current=$((current + 1))
-
-    percent=$((current * 100 / total_files))
-    filled=$((percent * bar_width / 100))
-    empty=$((bar_width - filled))
-    bar=$(printf "%0.s█" $(seq 1 $filled))
-    spaces=$(printf "%0.s " $(seq 1 $empty))
-
-    now=$(date +%s)
-    elapsed=$((now - start_time))
-    if [ "$current" -gt 0 ]; then
-      estimated_total=$((elapsed * total_files / current))
-      remaining=$((estimated_total - elapsed))
-      printf -v elapsed_str "%02d:%02d" $((elapsed/60)) $((elapsed%60))
-      printf -v remaining_str "%02d:%02d" $((remaining/60)) $((remaining%60))
-    else
-      elapsed_str="--:--"
-      remaining_str="--:--"
-    fi
-
-    if [ "$advanced" = true ]; then
-      echo "📄 $file"
-      echo "🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
-    else
-      echo -ne "\033[2K\r🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
-    fi
-  done
-
-  echo -e "\n✅ Backup completed successfully!"
-fi
-
-elif [ "$choice" == "2" ]; then
-  echo "→ Restoring system from NAS to /mnt..."
-  echo "⚠️  Make sure you've already mounted the destination partition at /mnt"
-  read -p "Continue? [y/N]: " confirm
-  if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    sudo rsync -aAXv "$nas_user@$nas_ip:$nas_path/" /mnt \
-      --progress --stats
-
-    echo "✅ Restore completed!"
-    echo "➡️  You should now chroot into /mnt and reinstall GRUB:"
-    echo "   sudo mount --bind /dev /mnt/dev"
-    echo "   sudo mount --bind /proc /mnt/proc"
-    echo "   sudo mount --bind /sys /mnt/sys"
-    echo "   sudo chroot /mnt"
-    echo "   grub-install /dev/sdX"
-    echo "   update-grub"
-    echo "   exit && sudo umount -R /mnt && reboot"
-  else
-    echo "❌ Restore cancelled."
-  fi
-
-# -------------------------
-# Change config
-# -------------------------
-if [ "$choice" == "3" ]; then
-  echo "🔧 Updating backup configuration..."
-  read -p "Do you want to send backups to 1. a NAS or 2. a local folder/disk? [1/2]: " backup_destination
-
-  if [ "$backup_destination" == "1" ]; then
-    read -p "Enter NAS username: " nas_user
-    read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
-    read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu): " nas_path
-
-    echo "nas_type=nas" | sudo tee "$CONFIG_FILE" > /dev/null
-    echo "nas_user=\"$nas_user\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
-    echo "nas_ip=\"$nas_ip\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
-    echo "nas_path=\"$nas_path\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
-  else
-    read -p "Enter local path (e.g. /mnt/backup): " local_path
-
-    echo "nas_type=local" | sudo tee "$CONFIG_FILE" > /dev/null
-    echo "local_path=\"$local_path\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
-  fi
-
-  echo "✅ Config updated."
-  exit 0
-fi
-
 # -------------------------
 # Set destination based on config
 # -------------------------
 if [ "$nas_type" == "nas" ]; then
-  destination="$nas_user@$nas_ip:$nas_path"\else
+  destination="$nas_user@$nas_ip:$nas_path"
+else
   destination="$local_path"
 fi
 
-else
-  echo "❌ Invalid choice."
-fi
+# -------------------------
+# Handle user choice with case
+# -------------------------
+case "$choice" in
+  1)
+    echo "📂 Analyzing files to back up..."
+
+    EXCLUDES=(
+      --exclude="/dev/*"
+      --exclude="/proc/*"
+      --exclude="/sys/*"
+      --exclude="/tmp/*"
+      --exclude="/run/*"
+      --exclude="/mnt/*"
+      --exclude="/media/*"
+      --exclude="/lost+found"
+      --exclude=".gradle/"
+      --exclude="node_modules/"
+    )
+
+    rsync_output=$(sudo rsync -aAXn "${EXCLUDES[@]}" --out-format="%n" / "$destination" --stats)
+
+    file_list=$(echo "$rsync_output" | grep -vE "Number|Total")
+    total_files=$(echo "$file_list" | wc -l)
+    total_size=$(echo "$rsync_output" | grep "Total file size" | grep -oE '[0-9]+' | head -n1)
+    total_files=${total_files:-0}
+    total_size=${total_size:-0}
+    human_total=$(numfmt --to=iec-i --suffix=B "$total_size")
+
+    echo "📦 Files to process      : $total_files"
+    echo "📏 Estimated total size  : $human_total"
+
+    read -p "Display the name of each file? [y/n] " adv_choice
+    advanced=false
+    [[ "$adv_choice" =~ ^[Yy]$ ]] && advanced=true
+
+    echo "🔄 Backup in progress..."
+
+    current=0
+    bar_width=50
+    start_time=$(date +%s)
+
+    sudo rsync -aAX "${EXCLUDES[@]}" --out-format="%n" / "$destination" | while IFS= read -r file; do
+      current=$((current + 1))
+
+      percent=$((current * 100 / total_files))
+      filled=$((percent * bar_width / 100))
+      empty=$((bar_width - filled))
+      bar=$(printf "%0.s█" $(seq 1 $filled))
+      spaces=$(printf "%0.s " $(seq 1 $empty))
+
+      now=$(date +%s)
+      elapsed=$((now - start_time))
+      if [ "$current" -gt 0 ]; then
+        estimated_total=$((elapsed * total_files / current))
+        remaining=$((estimated_total - elapsed))
+        printf -v elapsed_str "%02d:%02d" $((elapsed/60)) $((elapsed%60))
+        printf -v remaining_str "%02d:%02d" $((remaining/60)) $((remaining%60))
+      else
+        elapsed_str="--:--"
+        remaining_str="--:--"
+      fi
+
+      if [ "$advanced" = true ]; then
+        echo "📄 $file"
+        echo "🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+      else
+        echo -ne "\033[2K\r🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+      fi
+    done
+
+    echo -e "\n✅ Backup completed successfully!"
+    ;;
+
+  2)
+    echo "→ Restoring system from backup to /mnt..."
+    echo "⚠️  Make sure you've already mounted the destination partition at /mnt"
+    read -p "Continue? [y/N]: " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+      echo "📂 Analyzing restore source..."
+
+      rsync_output=$(sudo rsync -aAXn "$destination/" /mnt --stats)
+      file_list=$(echo "$rsync_output" | grep -vE "Number|Total")
+      total_files=$(echo "$file_list" | wc -l)
+      total_size=$(echo "$rsync_output" | grep "Total file size" | grep -oE '[0-9]+' | head -n1)
+      total_files=${total_files:-0}
+      total_size=${total_size:-0}
+      human_total=$(numfmt --to=iec-i --suffix=B "$total_size")
+
+      echo "📦 Files to restore      : $total_files"
+      echo "📏 Estimated total size  : $human_total"
+
+      read -p "Display the name of each file? [y/n] " adv_choice
+      advanced=false
+      [[ "$adv_choice" =~ ^[Yy]$ ]] && advanced=true
+
+      echo "🔄 Restore in progress..."
+
+      current=0
+      bar_width=50
+      start_time=$(date +%s)
+
+      sudo rsync -aAX --out-format="%n" "$destination/" /mnt | while IFS= read -r file; do
+        current=$((current + 1))
+
+        percent=$((current * 100 / total_files))
+        filled=$((percent * bar_width / 100))
+        empty=$((bar_width - filled))
+        bar=$(printf "%0.s█" $(seq 1 $filled))
+        spaces=$(printf "%0.s " $(seq 1 $empty))
+
+        now=$(date +%s)
+        elapsed=$((now - start_time))
+        if [ "$current" -gt 0 ]; then
+          estimated_total=$((elapsed * total_files / current))
+          remaining=$((estimated_total - elapsed))
+          printf -v elapsed_str "%02d:%02d" $((elapsed/60)) $((elapsed%60))
+          printf -v remaining_str "%02d:%02d" $((remaining/60)) $((remaining%60))
+        else
+          elapsed_str="--:--"
+          remaining_str="--:--"
+        fi
+
+        if [ "$advanced" = true ]; then
+          echo "📄 $file"
+          echo "🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+        else
+          echo -ne "\033[2K\r🔄 [$bar$spaces] $percent% ($current/$total_files) ⏱️ $elapsed_str | ⏳ $remaining_str"
+        fi
+      done
+
+      echo -e "\n✅ Restore completed!"
+      echo "➡️  You should now chroot into /mnt and reinstall GRUB:"
+      echo "   sudo mount --bind /dev /mnt/dev"
+      echo "   sudo mount --bind /proc /mnt/proc"
+      echo "   sudo mount --bind /sys /mnt/sys"
+      echo "   sudo chroot /mnt"
+      echo "   grub-install /dev/sdX"
+      echo "   update-grub"
+      echo "   exit && sudo umount -R /mnt && reboot"
+    else
+      echo "❌ Restore cancelled."
+    fi
+    ;;
+
+  3)
+    echo "🔧 Updating backup configuration..."
+    read -p "Do you want to send backups to 1. a NAS or 2. a local folder/disk? [1/2]: " backup_destination
+
+    if [ "$backup_destination" == "1" ]; then
+      read -p "Enter NAS username: " nas_user
+      read -p "Enter NAS IP address (e.g. 192.168.1.195): " nas_ip
+      read -p "Enter NAS path (e.g. /volume1/NetBackup/backupdata_ubuntu): " nas_path
+
+      echo "nas_type=nas" | sudo tee "$CONFIG_FILE" > /dev/null
+      echo "nas_user=\"$nas_user\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+      echo "nas_ip=\"$nas_ip\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+      echo "nas_path=\"$nas_path\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    else
+      read -p "Enter local path (e.g. /mnt/backup): " local_path
+
+      echo "nas_type=local" | sudo tee "$CONFIG_FILE" > /dev/null
+      echo "local_path=\"$local_path\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    fi
+
+    echo "✅ Config updated."
+    ;;
+
+  *)
+    echo "❌ Invalid choice."
+    ;;
+esac
